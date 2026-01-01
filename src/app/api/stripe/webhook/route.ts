@@ -3,6 +3,8 @@ import { constructWebhookEvent, stripe } from '@/lib/stripe';
 import { db } from '@/lib/db';
 import Stripe from 'stripe';
 
+export const runtime = 'edge';
+
 export async function POST(request: Request) {
     const payload = await request.text();
     const signature = request.headers.get('stripe-signature');
