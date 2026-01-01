@@ -141,12 +141,7 @@ export default function Home() {
               style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.5rem 1rem", color: "#d1d5db", fontSize: "0.9rem", cursor: "pointer", backdropFilter: "blur(10px)" }}>
               <span>🕒</span> History
             </button>
-            <a
-              href="mailto:cc1053970532@gmail.com?subject=OneSource%20Support%20Request"
-              style={{ display: "flex", alignItems: "center", textDecoration: "none", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.5rem 1rem", color: "#d1d5db", fontSize: "0.9rem", cursor: "pointer", backdropFilter: "blur(10px)" }}
-            >
-              <span>📧</span> Support
-            </a>
+
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.25rem 0.75rem", color: "#d1d5db", fontSize: "0.9rem" }}>
               {session.user?.image && (
                 <img src={session.user.image} alt="" style={{ width: 24, height: 24, borderRadius: "50%" }} />
