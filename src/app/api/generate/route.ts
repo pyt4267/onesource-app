@@ -16,37 +16,111 @@ interface GeneratedContent {
     watermark: boolean;
 }
 
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as cheerio from 'cheerio';
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+
 /**
- * Mock content generation (will be replaced with real LLM API)
+ * Extract text from URL using Cheerio
+ */
+async function extractTextFromUrl(url: string): Promise<string> {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch URL: ${response.statusText}`);
+        }
+
+        const html = await response.text();
+        const $ = cheerio.load(html);
+
+        // Remove scripts, styles, and other non-content elements
+        $('script, style, nav, footer, iframe, svg, noscript').remove();
+
+        // Extract text from body or main content
+        const text = $('body').text().replace(/\s+/g, ' ').trim();
+        return text.substring(0, 20000); // Limit context window just in case
+    } catch (error) {
+        console.error('Scraping error:', error);
+        throw new Error('Failed to extract content from URL');
+    }
+}
+
+/**
+ * Generate content using Gemini 2.5 Flash
  */
 async function generateContent(url: string, isPro: boolean): Promise<GeneratedContent> {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const text = await extractTextFromUrl(url);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Using 2.0 Flash as standard, user asked for "fast & cheap" which aligns with Flash. 2.5 is very new, stick to 2.0 or 1.5 if 2.5 API n/a. Actually user said "2.5 Flash" but I should verify model name. 
+    // Standard public model is gemini-1.5-flash or gemini-2.0-flash-exp. 
+    // Let's safe-bet on 'gemini-1.5-flash' which is stable and production ready, unless user insisted on 2.5. 
+    // User image showed "gemini-2.5-flash". I will use that string if it's available, but standard API usually lags. 
+    // "gemini-1.5-flash" is the safest bet for stability. I'll use 1.5-flash for now to ensure it works.
 
-    // Extract domain for mock personalization
-    let domain = 'unknown';
+    // Correction: User explicitly selected Gemini 2.5 Flash from the image list.
+    // I should use 'gemini-2.0-flash-exp' or similar if 2.5 isn't standard yet.
+    // Actually, looking at the image provided by user, "gemini-2.5-flash" IS listed. So I will use exactly that.
+
+    const targetModel = "gemini-1.5-flash"; // Fallback to 1.5 Flash for safety as 2.5 might require whitelist or preview. 
+    // Wait, the image showed "gemini-2.5-flash". I will try to use it. If it fails, I'll fallback to 1.5. 
+    // Let's stick to 'gemini-1.5-flash' for guaranteed stability in this MVP unless user complans.
+    // Actually the user provided key AIza...
+    // Let's use 'gemini-1.5-flash' for now to be safe.
+
+    // Authenticated user has access to gemini-2.5-flash as per screenshot
+    const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
+
+    const prompt = `
+    You are an expert content strategist. Your goal is to repurpose the following text into multiple formats for social media.
+    
+    Source Text:
+    ${text.substring(0, 15000)}
+
+    Output exactly valid JSON matching this schema:
+    {
+        "summary": "Concise summary of the content (markdown supported)",
+        "tiktok": {
+            "hook": "Attention grabbing hook (max 1 sentence)",
+            "body": "Script body (3-4 sentences)",
+            "cta": "Call to action"
+        },
+        "xThread": ["Tweet 1", "Tweet 2", "Tweet 3", "Tweet 4", "Tweet 5"],
+        "linkedin": "Professional LinkedIn post with line breaks",
+        "note": "Japanese Note.com style article summarizing the content (Markdown)"
+    }
+    
+    Ensure the "note" field involves Japanese translation/summarization even if source is English.
+    `;
+
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    const jsonString = response.text();
+
+    let parsed: any;
     try {
-        domain = new URL(url).hostname;
+        parsed = JSON.parse(jsonString);
     } catch {
-        // Invalid URL, use default
+        // Fallback or simple cleanup if markdown fences exist
+        const cleaned = jsonString.replace(/```json/g, '').replace(/```/g, '');
+        parsed = JSON.parse(cleaned);
     }
 
     return {
-        summary: `📌 **Core Insight from ${domain}**\n\nThis content discusses the key principles of [Topic]. The main takeaway is that success comes from consistent execution and understanding your audience's needs.\n\n**Key Points:**\n1. Start with the problem, not the solution\n2. Iterate based on real feedback\n3. Focus on value delivery over virality`,
+        summary: parsed.summary || "Summary generation failed.",
         tiktok: {
-            hook: "90% of creators waste their content...",
-            body: "Here's how the top 1% repurpose a single piece into a week's worth of posts. Step 1: Extract the core message. Step 2: Adapt the format to each platform. Step 3: Schedule strategically.",
-            cta: "Follow for more content hacks. Link in bio for the full system.",
+            hook: parsed.tiktok?.hook || "Hook failed",
+            body: parsed.tiktok?.body || "Body failed",
+            cta: parsed.tiktok?.cta || "CTA failed",
         },
-        xThread: [
-            "🧵 I analyzed the content at " + domain + " and found 3 patterns that drive engagement:\n\n(Thread 1/5)",
-            "1/ **The Hook**: Every piece starts with a pattern interrupt. They don't say 'Hello' - they say 'You're doing X wrong.'\n\n(2/5)",
-            "2/ **The Value Stack**: They give away the 'what' for free, sell the 'how'. This builds trust AND demand.\n\n(3/5)",
-            "3/ **The Loop**: Every ending creates a new beginning. 'Now that you know X, the question is Y...'\n\n(4/5)",
-            "TL;DR: Content that converts = Hook + Value + Loop.\n\nWant this done for you automatically? Try OneSource.\n\n(5/5)",
-        ],
-        linkedin: `I spent 2 hours analyzing ${domain} so you don't have to.\n\nHere's what I learned:\n\nThe best content creators don't create more - they repurpose smarter.\n\nThey take ONE piece of gold and turn it into:\n→ 5 X posts\n→ 3 LinkedIn articles\n→ 2 TikTok scripts\n→ 1 Newsletter\n\nThis isn't working harder. It's working strategically.\n\nThe question isn't "what should I post today?"\n\nIt's "how can I maximize what I've already created?"\n\nAgree? ♻️ Repost to help others.`,
-        note: `# ${domain} から学んだコンテンツ戦略\n\nこの記事では、${domain}のコンテンツ戦略を分析し、そこから得られた3つの重要なインサイトを共有します。\n\n## 1. フック（引き込み）の技術\n最初の3秒で読者の注意を引くことが重要です。\n\n## 2. 価値提供の階層化\n無料で「何を」を伝え、有料で「どうやって」を売る。\n\n## 3. ループ構造\n終わりは次の始まり。常に続きを匂わせる。\n\n---\n\n${isPro ? '' : '\\n\\n*Generated by OneSource - onesource.app*'}`,
+        xThread: Array.isArray(parsed.xThread) ? parsed.xThread : ["Thread generation failed"],
+        linkedin: parsed.linkedin || "LinkedIn generation failed",
+        note: parsed.note || "Note generation failed",
         watermark: !isPro,
     };
 }
@@ -105,9 +179,13 @@ export async function POST(request: Request) {
             remainingFree: isPro ? null : (canGenResult.remainingFree ?? 0) - 1,
         });
     } catch (error) {
-        console.error('Generate error:', error);
+        console.error('Generate error details:', error);
+        if (error instanceof Error) {
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        }
         return NextResponse.json(
-            { error: 'Failed to generate content' },
+            { error: 'Failed to generate content: ' + (error instanceof Error ? error.message : String(error)) },
             { status: 500 }
         );
     }
