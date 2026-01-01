@@ -144,6 +144,16 @@ export const db = {
         const now = Date.now();
 
         if (d1) {
+            // Fix: Ensure anonymous user exists in `users` table to satisfy Foreign Key
+            // If userId is present and doesn't look like a Stripe ID (starts with cus_), treating as anonymous
+            if (userId && !userId.startsWith('cus_')) {
+                await d1.prepare(`
+                   INSERT INTO users (id, email, plan, created_at)
+                   VALUES (?, 'anonymous@onesource.app', 'free', ?)
+                   ON CONFLICT(id) DO NOTHING
+               `).bind(userId, now).run();
+            }
+
             await d1.prepare(`
                 INSERT INTO usage (user_id, content_url, generated_content, tone, created_at)
                 VALUES (?, ?, ?, ?, ?)
