@@ -34,10 +34,11 @@ interface D1ExecResult {
 }
 
 interface User {
-    id: string;           // Stripe Customer ID
+    id: string;           // Stripe Customer ID or internal ID
     email: string;
     plan: 'free' | 'pro';
     stripeSubscriptionId?: string;
+    googleId?: string;    // Google OAuth ID
     createdAt: number;
 }
 
@@ -263,6 +264,67 @@ export const db = {
             allowed: true,
             remainingFree: FREE_LIMIT - monthlyCount
         };
+    },
+
+    /**
+     * Get user by Google OAuth ID
+     */
+    async getUserByGoogleId(googleId: string): Promise<User | null> {
+        const d1 = getD1();
+        if (d1) {
+            const result = await d1.prepare('SELECT * FROM users WHERE google_id = ?').bind(googleId).first<any>();
+            if (!result) return null;
+            return {
+                id: result.id,
+                email: result.email,
+                plan: result.plan as 'free' | 'pro',
+                stripeSubscriptionId: result.stripe_subscription_id,
+                googleId: result.google_id,
+                createdAt: result.created_at
+            };
+        } else {
+            for (const user of memoryUsers.values()) {
+                if ((user as any).googleId === googleId) return user;
+            }
+            return null;
+        }
+    },
+
+    /**
+     * Create or update a user by Google ID
+     */
+    async upsertUserByGoogleId(googleId: string, email: string): Promise<User> {
+        const d1 = getD1();
+        const now = Date.now();
+        const id = `google_${googleId}`;
+
+        if (d1) {
+            await d1.prepare(`
+                INSERT INTO users (id, email, plan, google_id, created_at)
+                VALUES (?, ?, 'free', ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    email = excluded.email,
+                    google_id = excluded.google_id
+            `).bind(id, email, googleId, now).run();
+
+            return {
+                id,
+                email,
+                plan: 'free',
+                googleId,
+                createdAt: now
+            };
+        } else {
+            const newUser: User = {
+                id,
+                email,
+                plan: 'free',
+                googleId,
+                createdAt: now,
+            };
+            memoryUsers.set(id, newUser);
+            return newUser;
+        }
     },
 };
 

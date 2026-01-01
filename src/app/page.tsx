@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import BentoGrid from "@/components/BentoGrid";
 import PricingTable from "@/components/PricingTable";
 
@@ -14,6 +15,7 @@ interface GeneratedContent {
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
@@ -95,9 +97,20 @@ export default function Home() {
   };
 
   const handleCheckout = async () => {
+    // Gate Pro checkout behind Google login
+    if (!session) {
+      signIn("google");
+      return;
+    }
+
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: session.user?.email,
+          googleId: (session as any).googleId
+        }),
       });
       const data = await response.json();
       if (data.url) {
@@ -120,12 +133,35 @@ export default function Home() {
       zIndex: 1
     }}>
       {/* Header Utilities */}
-      <div style={{ position: "absolute", top: "2rem", right: "2rem", display: "flex", gap: "1rem", zIndex: 50 }}>
-        <button
-          onClick={fetchHistory}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.5rem 1rem", color: "#d1d5db", fontSize: "0.9rem", cursor: "pointer", backdropFilter: "blur(10px)" }}>
-          <span>🕒</span> History
-        </button>
+      <div style={{ position: "absolute", top: "2rem", right: "2rem", display: "flex", gap: "1rem", zIndex: 50, alignItems: "center" }}>
+        {session ? (
+          <>
+            <button
+              onClick={fetchHistory}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.5rem 1rem", color: "#d1d5db", fontSize: "0.9rem", cursor: "pointer", backdropFilter: "blur(10px)" }}>
+              <span>🕒</span> History
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.25rem 0.75rem", color: "#d1d5db", fontSize: "0.9rem" }}>
+              {session.user?.image && (
+                <img src={session.user.image} alt="" style={{ width: 24, height: 24, borderRadius: "50%" }} />
+              )}
+              <span>{session.user?.name?.split(' ')[0] || session.user?.email}</span>
+            </div>
+            <button
+              onClick={() => signOut()}
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.5rem 1rem", color: "#d1d5db", fontSize: "0.9rem", cursor: "pointer", backdropFilter: "blur(10px)" }}>
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => signIn("google")}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "linear-gradient(135deg, #a855f7, #6366f1)", border: "none", borderRadius: "20px", padding: "0.5rem 1.25rem", color: "white", fontSize: "0.9rem", cursor: "pointer", fontWeight: "600" }}>
+              <span>🔐</span> Sign in with Google
+            </button>
+          </>
+        )}
         <a
           href="mailto:support@onesource.app"
           style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "20px", padding: "0.5rem 1rem", color: "#d1d5db", fontSize: "0.9rem", textDecoration: "none", backdropFilter: "blur(10px)" }}>

@@ -4,8 +4,11 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL,
   plan TEXT DEFAULT 'free',      -- 'free' | 'pro'
   stripe_subscription_id TEXT,
+  google_id TEXT,                -- Google OAuth ID
   created_at INTEGER DEFAULT (unixepoch())
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 
 -- Usage tracking
 CREATE TABLE IF NOT EXISTS usage (
