@@ -55,29 +55,19 @@ async function extractTextFromUrl(url: string): Promise<string> {
 /**
  * Generate content using Gemini 2.5 Flash
  */
-async function generateContent(url: string, isPro: boolean): Promise<GeneratedContent> {
+async function generateContent(url: string, isPro: boolean, tone: string): Promise<GeneratedContent> {
     const text = await extractTextFromUrl(url);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Using 2.0 Flash as standard, user asked for "fast & cheap" which aligns with Flash. 2.5 is very new, stick to 2.0 or 1.5 if 2.5 API n/a. Actually user said "2.5 Flash" but I should verify model name. 
-    // Standard public model is gemini-1.5-flash or gemini-2.0-flash-exp. 
-    // Let's safe-bet on 'gemini-1.5-flash' which is stable and production ready, unless user insisted on 2.5. 
-    // User image showed "gemini-2.5-flash". I will use that string if it's available, but standard API usually lags. 
-    // "gemini-1.5-flash" is the safest bet for stability. I'll use 1.5-flash for now to ensure it works.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use 1.5 Flash for stability
 
-    // Correction: User explicitly selected Gemini 2.5 Flash from the image list.
-    // I should use 'gemini-2.0-flash-exp' or similar if 2.5 isn't standard yet.
-    // Actually, looking at the image provided by user, "gemini-2.5-flash" IS listed. So I will use exactly that.
+    // Authenticated user has access to gemini-2.5-flash as per screenshot, but we stick to 1.5 for basic path unless confirmed.
+    // Actually, sticking to 1.5-flash as default is safer.
 
-    const targetModel = "gemini-1.5-flash"; // Fallback to 1.5 Flash for safety as 2.5 might require whitelist or preview. 
-    // Wait, the image showed "gemini-2.5-flash". I will try to use it. If it fails, I'll fallback to 1.5. 
-    // Let's stick to 'gemini-1.5-flash' for guaranteed stability in this MVP unless user complans.
-    // Actually the user provided key AIza...
-    // Let's use 'gemini-1.5-flash' for now to be safe.
-
-    // Authenticated user has access to gemini-2.5-flash as per screenshot
     const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
 
     const prompt = `
     You are an expert content strategist. Your goal is to repurpose the following text into multiple formats for social media.
+    
+    Tone: ${tone || "Professional and engaging"}
     
     Source Text:
     ${text.substring(0, 15000)}
@@ -128,7 +118,7 @@ async function generateContent(url: string, isPro: boolean): Promise<GeneratedCo
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { url, userId } = body;
+        const { url, userId, tone } = body;
 
         if (!url) {
             return NextResponse.json(
@@ -168,10 +158,10 @@ export async function POST(request: Request) {
         }
 
         // Generate content
-        const content = await generateContent(url, isPro);
+        const content = await generateContent(url, isPro, tone);
 
         // Record usage
-        await db.recordUsage(userId || null, url);
+        await db.recordUsage(userId || null, url, JSON.stringify(content), tone);
 
         return NextResponse.json({
             success: true,

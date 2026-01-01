@@ -123,14 +123,32 @@ Today I want to share a framework that helped me save 20 hours a week..."`;
 
             {/* 2. TikTok Script - Vertical */}
             <Card
-                style={{ gridColumn: "span 1", gridRow: "span 2" }}
-                copyText={`Hook: ${tiktok.hook}\n\nBody: ${tiktok.body}\n\nCTA: ${tiktok.cta}`}
+                style={{ gridColumn: "span 1", gridRow: "span 2", position: "relative", overflow: "hidden" }}
+                copyText={content?.watermark ? undefined : `Hook: ${tiktok.hook}\n\nBody: ${tiktok.body}\n\nCTA: ${tiktok.cta}`}
             >
+                {content?.watermark && (
+                    <div style={{
+                        position: "absolute",
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        background: "rgba(0,0,0,0.6)",
+                        backdropFilter: "blur(8px)",
+                        zIndex: 10,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center"
+                    }}>
+                        <span style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🔒</span>
+                        <h4 style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>Pro Feature</h4>
+                        <p style={{ fontSize: "0.8rem", color: "#d1d5db" }}>Upgrade to unlock TikTok scripts</p>
+                    </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
                     <span style={{ fontSize: "1.5rem", marginRight: "0.5rem" }}>🎵</span>
                     <h3 style={{ fontSize: "1.2rem", color: "#fff", fontWeight: "bold" }}>TikTok</h3>
                 </div>
-                <div style={{ fontSize: "0.9rem", color: "#e5e7eb", lineHeight: "1.5" }}>
+                <div style={{ fontSize: "0.9rem", color: "#e5e7eb", lineHeight: "1.5", opacity: content?.watermark ? 0.3 : 1 }}>
                     <p style={{ marginBottom: "0.5rem" }}><strong style={{ color: "#ec4899" }}>Hook (0-3s):</strong> <br />"{tiktok.hook}"</p>
                     <p style={{ marginBottom: "0.5rem" }}><strong style={{ color: "#ec4899" }}>Body:</strong> <br />{tiktok.body}</p>
                     <p><strong style={{ color: "#ec4899" }}>CTA:</strong> <br />{tiktok.cta}</p>
@@ -167,6 +185,38 @@ Today I want to share a framework that helped me save 20 hours a week..."`;
                 </div>
                 <p style={{ color: "#d1d5db", fontSize: "1rem", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>
                     {linkedin}
+                </p>
+            </Card>
+
+            {/* 5. Note.com - Full Width */}
+            <Card
+                style={{ gridColumn: "span 4", gridRow: "span 1", position: "relative", overflow: "hidden" }}
+                copyText={content?.watermark ? undefined : content?.note}
+            >
+                {content?.watermark && (
+                    <div style={{
+                        position: "absolute",
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        background: "rgba(0,0,0,0.6)",
+                        backdropFilter: "blur(8px)",
+                        zIndex: 10,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center"
+                    }}>
+                        <span style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🔒</span>
+                        <h4 style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>Pro Feature</h4>
+                        <p style={{ fontSize: "0.8rem", color: "#d1d5db" }}>Upgrade to unlock Note.com articles</p>
+                    </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+                    <span style={{ fontSize: "1.5rem", marginRight: "0.5rem" }}>📝</span>
+                    <h3 style={{ fontSize: "1.2rem", color: "#fff", fontWeight: "bold" }}>Note.com Article</h3>
+                </div>
+                <p style={{ color: "#d1d5db", fontSize: "1rem", lineHeight: "1.6", whiteSpace: "pre-wrap", opacity: content?.watermark ? 0.3 : 1 }}>
+                    {content?.note || "Note content..."}
                 </p>
             </Card>
         </div>

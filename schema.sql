@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS usage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT,                  -- Stripe Customer ID (or null for anonymous)
   content_url TEXT NOT NULL,
+  generated_content TEXT,        -- JSON string of result
+  tone TEXT,                     -- Tone used (e.g. 'professional')
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );

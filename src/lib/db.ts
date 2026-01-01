@@ -45,6 +45,8 @@ interface UsageRecord {
     id: number;
     userId: string | null;
     contentUrl: string;
+    generatedContent?: string;
+    tone?: string;
     createdAt: number;
 }
 
@@ -137,23 +139,22 @@ export const db = {
     /**
      * Record a content generation usage
      */
-    async recordUsage(userId: string | null, contentUrl: string): Promise<UsageRecord> {
+    async recordUsage(userId: string | null, contentUrl: string, generatedContent?: string, tone?: string): Promise<UsageRecord> {
         const d1 = getD1();
         const now = Date.now();
 
         if (d1) {
-            const result = await d1.prepare(`
-                INSERT INTO usage (user_id, content_url, created_at)
-                VALUES (?, ?, ?)
-            `).bind(userId, contentUrl, now).run();
+            await d1.prepare(`
+                INSERT INTO usage (user_id, content_url, generated_content, tone, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            `).bind(userId, contentUrl, generatedContent || null, tone || null, now).run();
 
-            // D1 insert returns meta info, ID retrieval is specific. 
-            // For simplicity we return a mock ID or fetch max ID if strictly needed.
-            // But we rarely need the ID immediately.
             return {
-                id: 0, // Placeholder
+                id: 0,
                 userId,
                 contentUrl,
+                generatedContent,
+                tone,
                 createdAt: now
             };
         } else {
@@ -161,6 +162,8 @@ export const db = {
                 id: memoryUsageIdCounter++,
                 userId,
                 contentUrl,
+                generatedContent,
+                tone,
                 createdAt: now,
             };
             memoryUsage.push(record);
@@ -169,23 +172,44 @@ export const db = {
     },
 
     /**
+     * Get history for a user
+     */
+    async getHistory(userId: string, limit = 20): Promise<UsageRecord[]> {
+        const d1 = getD1();
+        if (d1) {
+            const results = await d1.prepare(`
+                SELECT * FROM usage 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT ?
+            `).bind(userId, limit).all<any>();
+
+            if (!results.results) return [];
+
+            return results.results.map(r => ({
+                id: r.id,
+                userId: r.user_id,
+                contentUrl: r.content_url,
+                generatedContent: r.generated_content,
+                tone: r.tone,
+                createdAt: r.created_at
+            }));
+        } else {
+            return memoryUsage
+                .filter(u => u.userId === userId)
+                .sort((a, b) => b.createdAt - a.createdAt)
+                .slice(0, limit);
+        }
+    },
+
+    /**
      * Get monthly usage count for a user (or anonymous)
      */
     async getMonthlyUsageCount(userId: string | null): Promise<number> {
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000); // approx
-        // Note: SQLite uses seconds (unixepoch) usually, but we stored ms in `created_at` in upsert?
-        // Wait, schema default is `unixepoch()` (seconds).
-        // My code passes `Date.now()` (ms).
-        // I should be consistent. D1 is SQLite. Let's use MS for consistency with component lifecycle or purely seconds.
-        // `Date.now()` is MS. `unixepoch()` is seconds.
-        // I will just use MS everywhere in JS land.
 
         const d1 = getD1();
         if (d1) {
-            // If user_id is null, we can check anonymous usage? 
-            // Actually SQL `user_id = NULL` logic is tricky (`IS NULL`).
-            // But usually we only limit registered free users or track by IP?
-            // The logic: `userId` provided means logged in (or tracked).
             if (!userId) return 0; // Anonymous limit handled elsewhere or session?
 
             const result = await d1.prepare(`
