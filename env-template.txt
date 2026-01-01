@@ -1,0 +1,25 @@
+# ===========================================
+# OneSource Environment Variables
+# ===========================================
+# Copy this file to .env.local and fill in your keys
+
+# --- Stripe (Required for Payments) ---
+STRIPE_SECRET_KEY=sk_test_YOUR_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET
+STRIPE_PRICE_ID=price_YOUR_PRO_PLAN_PRICE_ID
+
+# --- LLM API (Choose one) ---
+# OpenAI
+OPENAI_API_KEY=sk-YOUR_OPENAI_KEY
+
+# OR Anthropic (Claude)
+# ANTHROPIC_API_KEY=sk-ant-YOUR_KEY
+
+# OR Google AI (Gemini)
+# GOOGLE_AI_API_KEY=YOUR_GOOGLE_AI_KEY
+
+# --- Cloudflare (For Production) ---
+# These are set automatically by Cloudflare Pages
+# CLOUDFLARE_ACCOUNT_ID=
+# CLOUDFLARE_API_TOKEN=
